@@ -1,0 +1,37 @@
+[project]
+name = "omastar"
+version = "0.1.0"
+description = "NCAA March Madness bracket prediction using ML and Monte Carlo simulation"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "scikit-learn>=1.3",
+    "xgboost>=2.0",
+    "lightgbm>=4.0",
+    "optuna>=3.0",
+    "shap>=0.43",
+    "matplotlib>=3.7",
+    "seaborn>=0.12",
+    "tqdm>=4.65",
+]
+
+[project.optional-dependencies]
+catboost = ["catboost>=1.2"]
+
+dev = [
+    "pytest>=7.0",
+    "jupyter>=1.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
