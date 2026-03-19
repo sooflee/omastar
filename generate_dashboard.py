@@ -21,7 +21,7 @@ warnings.filterwarnings(
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import RAW_DIR, PROCESSED_DIR, OUTPUT_DIR, DEFAULT_N_SIMULATIONS, setup_logging
+from config import RAW_DIR, PROCESSED_DIR, OUTPUT_DIR, DEFAULT_N_SIMULATIONS, CURRENT_SEASON, setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,17 @@ def main():
 
     features, target, feature_cols = build_full_training_set()
     logger.info("  %d matchups, %d features", len(features), len(feature_cols))
+
+    # Validate season data exists
+    season = CURRENT_SEASON
+    seeds_check = load.load_tourney_seeds()
+    if season not in seeds_check["Season"].values:
+        logger.error("No tournament seeds found for season %d. "
+                      "Available: %d-%d. Update CURRENT_SEASON in config.py "
+                      "or add season %d data.",
+                      season, seeds_check["Season"].min(),
+                      seeds_check["Season"].max(), season)
+        sys.exit(1)
 
     # --- Seed-only baseline ---
     logger.info("  Computing seed baseline...")
@@ -83,7 +94,6 @@ def main():
     team_names = dict(zip(teams["TeamID"], teams["TeamName"]))
     team_features = build_team_features()
 
-    season = 2026
     season_teams = seeds[seeds["Season"] == season]["TeamID"].tolist()
 
     logger.info("  Generating predictions...")

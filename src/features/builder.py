@@ -1,3 +1,4 @@
+import hashlib
 import logging
 
 import pandas as pd
@@ -19,22 +20,80 @@ from src.features.program_experience import compute_program_tourney_features
 from src.features.matchup import build_training_data, build_matchup_features, DIFF_FEATURES
 from src.features.seed_matchup import add_seed_matchup_features
 
-from config import FIRST_DETAILED_SEASON
+from config import FIRST_DETAILED_SEASON, PROCESSED_DIR, RAW_DIR
+
+_CACHE_PATH = PROCESSED_DIR / "team_features_cache.parquet"
+_CACHE_HASH_PATH = PROCESSED_DIR / "team_features_cache.hash"
+
+
+def _compute_source_hash() -> str:
+    """Compute a hash from modification times of all raw CSV files.
+
+    This lets us detect when any source data has changed and the cache
+    should be invalidated.
+    """
+    csv_files = sorted(RAW_DIR.glob("*.csv"))
+    mtimes = "|".join(f"{f.name}:{f.stat().st_mtime}" for f in csv_files)
+    return hashlib.sha256(mtimes.encode()).hexdigest()
+
+
+def _load_cached_features() -> pd.DataFrame | None:
+    """Load cached features if cache exists and hash matches.
+
+    Returns the cached DataFrame on cache hit, or None on miss.
+    """
+    if not _CACHE_PATH.exists() or not _CACHE_HASH_PATH.exists():
+        return None
+
+    stored_hash = _CACHE_HASH_PATH.read_text().strip()
+    current_hash = _compute_source_hash()
+
+    if stored_hash != current_hash:
+        logger.info("  Feature cache hash mismatch — rebuilding")
+        return None
+
+    logger.info("  Feature cache hit — loading from %s", _CACHE_PATH)
+    return pd.read_parquet(_CACHE_PATH)
+
+
+def _save_features_cache(features: pd.DataFrame) -> None:
+    """Save computed features and source hash to disk."""
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    features.to_parquet(_CACHE_PATH, index=False)
+    _CACHE_HASH_PATH.write_text(_compute_source_hash())
+    logger.info("  Feature cache saved to %s", _CACHE_PATH)
 
 
 def build_team_features(
     reg_season_detailed: pd.DataFrame | None = None,
     seeds: pd.DataFrame | None = None,
     ordinals: pd.DataFrame | None = None,
+    force_rebuild: bool = False,
 ) -> pd.DataFrame:
     """Build complete team-season feature table.
 
     Loads data if not provided, computes all features, and merges into
-    a single team-season table.
+    a single team-season table.  Results are cached to parquet in
+    PROCESSED_DIR so that subsequent runs can skip recomputation when the
+    underlying raw data hasn't changed.
+
+    Args:
+        reg_season_detailed: Pre-loaded detailed regular-season results.
+        seeds: Pre-loaded tournament seeds.
+        ordinals: Pre-loaded Massey ordinals.
+        force_rebuild: If True, bypass the cache and recompute from scratch.
 
     Returns:
         DataFrame with Season, TeamID, and all computed features.
     """
+    # --- cache check ---
+    if not force_rebuild:
+        cached = _load_cached_features()
+        if cached is not None:
+            return cached
+    else:
+        logger.info("  force_rebuild=True — skipping cache")
+
     # Load data if not provided
     if reg_season_detailed is None:
         reg_season_detailed = load.load_regular_season_detailed()
@@ -131,6 +190,10 @@ def build_team_features(
 
     logger.info("  Team features built: %d team-seasons, %d columns",
                 len(features), len(features.columns))
+
+    # --- save to cache ---
+    _save_features_cache(features)
+
     return features
 
 

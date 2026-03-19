@@ -48,6 +48,32 @@ def check_data():
         sys.exit(1)
 
 
+def check_season_data(season: int):
+    """Validate that the target season has tournament data available."""
+    import pandas as pd
+    seeds_path = RAW_DIR / "MNCAATourneySeeds.csv"
+    slots_path = RAW_DIR / "MNCAATourneySlots.csv"
+    if not seeds_path.exists() or not slots_path.exists():
+        return  # check_data() will catch missing files
+
+    seeds = pd.read_csv(seeds_path)
+    if season not in seeds["Season"].values:
+        logger.error("No tournament seeds found for season %d.", season)
+        logger.error("Available seasons: %d-%d",
+                      seeds["Season"].min(), seeds["Season"].max())
+        logger.error("Make sure your Kaggle data includes season %d.", season)
+        sys.exit(1)
+
+    slots = pd.read_csv(slots_path)
+    if season not in slots["Season"].values:
+        logger.error("No tournament bracket slots found for season %d.", season)
+        logger.error("Make sure your Kaggle data includes season %d.", season)
+        sys.exit(1)
+
+    n_teams = len(seeds[seeds["Season"] == season])
+    logger.info("  Season %d: %d tournament teams found", season, n_teams)
+
+
 def step_build_features():
     logger.info("[1/6] Building features...")
     from src.features.builder import build_full_training_set
@@ -252,6 +278,7 @@ if __name__ == "__main__":
 
     ensure_dirs()
     check_data()
+    check_season_data(args.season)
 
     features, target, feature_cols = step_build_features()
 

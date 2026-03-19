@@ -42,6 +42,7 @@ FIGURES_DIR = OUTPUT_DIR / "figures"
 FIRST_DETAILED_SEASON = 2003  # first season with detailed box score stats in Kaggle dataset
 TOURNAMENT_ROUNDS = 6
 GAMES_PER_TOURNAMENT = 63  # 64-team single elimination (excluding play-in)
+CURRENT_SEASON = 2026  # year to generate predictions / dashboard for
 
 # ---------------------------------------------------------------------------
 # Model defaults
