@@ -322,7 +322,7 @@ function animateCounter(el, start, end, duration) {
 var _bracketTeams = null;
 var _originalTeams = null;  // unmodified copy for re-adjustment
 var _bracketOverrides = {};
-var _bracketProbMode = 'normalized'; // 'normalized' or 'total'
+var _bracketProbMode = 'total'; // 'normalized' or 'total'
 var _bracketListenersSet = false;
 var _completedGames = {};    // populated from ESPN
 var _playinResults = {};     // populated from ESPN
@@ -987,7 +987,8 @@ function updateTourneyStatus() {
   if (now < start) {
     el.textContent = '';
   } else if (now < end && !_completedGames['champ']) {
-    el.innerHTML = 'March Madness ' + season + ' is <span style="color: var(--green); font-weight: 600;">going on right now</span>';
+    el.innerHTML = 'March Madness ' + season + ' is <span style="color: var(--green); font-weight: 600;">going on right now</span>' +
+      '<br>This is <em style="color: var(--accent); font-style: italic;">my bracket</em>';
   } else {
     el.textContent = 'March Madness ' + season + ' is over';
   }
