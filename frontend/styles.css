@@ -90,6 +90,61 @@ body {
   animation: fadeUp 1s 0.6s forwards;
 }
 
+/* --- ACCURACY COMPARISON (hero) --- */
+.accuracy-comparison {
+  margin-top: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.acc-cards {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.acc-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  text-align: center;
+  min-width: 120px;
+}
+
+.acc-card-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.3rem;
+}
+
+.acc-card-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.acc-card-pct {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.acc-vs {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+
 .scroll-hint {
   position: absolute;
   bottom: 3rem;

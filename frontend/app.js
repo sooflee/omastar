@@ -977,6 +977,95 @@ function fetchTournamentResults() {
   });
 }
 
+function computeAccuracyComparison() {
+  var completedKeys = Object.keys(_completedGames);
+  if (!completedKeys.length) return null;
+
+  var modelCorrect = 0, seedCorrect = 0, total = 0;
+  var modelUpsetHits = 0, modelUpsetMisses = 0, seedUpsetMisses = 0;
+  var roundPoints = [1, 2, 4, 8, 16, 32];
+  var modelScore = 0, seedScore = 0;
+
+  // Walk bracket to get team pairs for each completed game
+  ['W', 'X', 'Y', 'Z'].forEach(function(prefix) {
+    var teams = _seedOrder.map(function(s) {
+      var cands = _originalTeams.filter(function(t) {
+        return t.seed.charAt(0) === prefix && t.seedNum === s;
+      });
+      if (!cands.length) return null;
+      if (cands.length > 1) {
+        var pk = prefix + s;
+        if (_playinResults[pk]) {
+          var w = cands.find(function(t) { return t.name === _playinResults[pk]; });
+          if (w) return w;
+        }
+      }
+      return cands.reduce(function(a, b) { return a.r64 > b.r64 ? a : b; });
+    });
+
+    var slots = teams;
+    for (var round = 0; round <= 3; round++) {
+      var nextSlots = [];
+      var pts = roundPoints[round] || 1;
+      for (var i = 0; i < slots.length; i += 2) {
+        var a = slots[i], b = slots[i + 1];
+        var gid = prefix + '-' + round + '-' + Math.floor(i / 2);
+        var completed = _completedGames[gid];
+        var modelPred = _predictions[gid];
+
+        if (completed && a && b) {
+          total++;
+          var actual = completed.w;
+          // Seed pick: lower seedNum = higher seed = index 0 if a.seedNum < b.seedNum
+          var seedPick = (a.seedNum <= b.seedNum) ? 0 : 1;
+          var isUpset = (actual !== seedPick);
+
+          if (modelPred === actual) {
+            modelCorrect++;
+            modelScore += pts;
+            if (isUpset) modelUpsetHits++;
+          } else {
+            if (modelPred !== seedPick) modelUpsetMisses++;
+          }
+          if (seedPick === actual) {
+            seedCorrect++;
+            seedScore += pts;
+          } else {
+            seedUpsetMisses++;
+          }
+
+          nextSlots.push(completed.w === 0 ? a : b);
+        } else {
+          // Use model prediction or first available for advancing
+          var rk = ['r64', 'r32', 's16', 'e8'][round];
+          var pred = (a && b) ? (a[rk] >= b[rk] ? a : b) : (a || b);
+          nextSlots.push(pred);
+        }
+      }
+      slots = nextSlots;
+    }
+  });
+
+  // Final Four & Championship
+  var f4Games = [['f4-0'], ['f4-1'], ['champ']];
+  // These are harder to map without full team context; skip for now if not completed
+  // (the region games are the bulk of the comparison)
+
+  if (total === 0) return null;
+  return {
+    total: total,
+    modelCorrect: modelCorrect,
+    seedCorrect: seedCorrect,
+    modelPct: (modelCorrect / total * 100).toFixed(1),
+    seedPct: (seedCorrect / total * 100).toFixed(1),
+    modelScore: modelScore,
+    seedScore: seedScore,
+    modelUpsetHits: modelUpsetHits,
+    modelUpsetMisses: modelUpsetMisses,
+    seedUpsetMisses: seedUpsetMisses
+  };
+}
+
 function updateTourneyStatus() {
   var el = document.getElementById('tourney-status');
   if (!el) return;
@@ -987,8 +1076,28 @@ function updateTourneyStatus() {
   if (now < start) {
     el.textContent = '';
   } else if (now < end && !_completedGames['champ']) {
-    el.innerHTML = 'March Madness ' + season + ' is <span style="color: var(--green); font-weight: 600;">going on right now</span>' +
+    var html = 'March Madness ' + season + ' is <span style="color: var(--green); font-weight: 600;">going on right now</span>' +
       '<br>This is <em style="color: var(--accent); font-style: italic;">my bracket</em>';
+
+    var acc = computeAccuracyComparison();
+    if (acc && acc.total > 0) {
+      html += '<div class="accuracy-comparison">' +
+        '<div class="acc-cards">' +
+          '<div class="acc-card">' +
+            '<div class="acc-card-label">My Model</div>' +
+            '<div class="acc-card-value">' + acc.modelPct + '%</div>' +
+            '<div class="acc-card-pct">' + acc.modelCorrect + '/' + acc.total + '</div>' +
+          '</div>' +
+          '<div class="acc-vs">vs</div>' +
+          '<div class="acc-card">' +
+            '<div class="acc-card-label">Higher Seed</div>' +
+            '<div class="acc-card-value">' + acc.seedPct + '%</div>' +
+            '<div class="acc-card-pct">' + acc.seedCorrect + '/' + acc.total + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+    el.innerHTML = html;
   } else {
     el.textContent = 'March Madness ' + season + ' is over';
   }
